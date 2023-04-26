@@ -23,7 +23,7 @@ int main()
 	fd_out = open("result", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
 	//error case
-	if(fd_in < 0)
+	if(fd_out < 0)
 	{
 		fprintf(stderr, "file2 open failed\n");
 		exit(-1);
@@ -38,6 +38,7 @@ int main()
 	if((pid=fork())<0)
 	{
 		fprintf(stderr, "unable to fork\n");
+		exit(-1);
 	}
 	if(pid == 0)
 	{
