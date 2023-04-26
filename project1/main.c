@@ -15,7 +15,7 @@ int main()
 	//error case
 	if(fd_in < 0)
 	{
-		fprintf(stderr, "file1 open failed\n");
+		perror("Input file open");
 		exit(-1);
 	}
 
@@ -25,7 +25,7 @@ int main()
 	//error case
 	if(fd_out < 0)
 	{
-		fprintf(stderr, "file2 open failed\n");
+		perror("Output file open");
 		exit(-1);
 	}
 
@@ -37,7 +37,7 @@ int main()
 	pid_t pid;
 	if((pid=fork())<0)
 	{
-		fprintf(stderr, "unable to fork\n");
+		perror("Fork");
 		exit(-1);
 	}
 	if(pid == 0)
@@ -46,7 +46,7 @@ int main()
 		ret = execvp("./printer", NULL);
 		if(ret < 0)
 		{
-			fprintf(stderr, "unable to execute printer\n");
+			perror("Execute");
 			exit(-1);
 		}
 		exit(0);
