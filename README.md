@@ -9,7 +9,7 @@
 #### 구성파일
 
 - Readme.md
-- (Makefile)
+- Makefile
 - input (입력파일)
 - printer.c
 - main.c
