@@ -34,8 +34,8 @@ int main()
 	dup2(fd_out, 1);
 
 	//fork, execution program at child process
-	pid_t pid;
-	if((pid=fork())<0)
+	pid_t pid = fork();
+	if(pid < 0)
 	{
 		perror("Fork");
 		exit(-1);
