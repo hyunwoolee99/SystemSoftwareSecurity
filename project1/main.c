@@ -51,7 +51,8 @@ int main()
 		}
 		exit(0);
 	}
-	while(wait(&status) != pid) continue;
-	return 0;
+	wait(&status);
+	if(WEXITSTATUS(status) != 0) return -1;
+	else return 0;
 }
 
