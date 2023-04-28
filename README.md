@@ -10,11 +10,25 @@
 
 - Readme.md
 - Makefile
+  + 빠른 구현 및 실행을 위한 파일
 - input (입력파일)
+- result (출력파일)
+  + 제출된 파일에서는 input 파일과 내용이 동일
+  + make clean 시에 result 파일도 삭제
+  + main 실행 시 새로 생성, result 파일이 이미 존재할 경우 기존 내용을 덮어씀
 - printer.c
+  + 프로그램 P에 해당하는 코드
 - main.c
-- main (실행파일)
+  + 메인 프로그램 코드
 - printer (실행파일)
+  + 프로그램 P에 해당
+- main (실행파일)
+  + 메인 프로그램
+
+##### 참고사항
+
+printer 프로그램을 단독으로 실행할 경우 EOF command(ctrl + D) 를 통해 종료한다
+
 ---
 #### 구현과정(별개 컴파일X)
 
