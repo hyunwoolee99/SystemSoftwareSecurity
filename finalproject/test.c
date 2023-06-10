@@ -18,9 +18,9 @@ int main(int argc , char *argv[])
     }
     puts("Socket created");
      
-    server.sin_addr.s_addr = inet_addr("127.0.0.1"); // IP for www.google.com
+    server.sin_addr.s_addr = inet_addr("192.168.111.24"); // IP for www.google.com
     server.sin_family = AF_INET;
-    server.sin_port = htons( 80 );
+    server.sin_port = htons( 8080 );
  
     //Connect to remote server
     if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0)

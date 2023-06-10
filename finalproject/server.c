@@ -50,11 +50,11 @@ int main() {
     printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
     // 클라이언트로부터 데이터 수신
-    /*ssize_t bytes_received;
+    ssize_t bytes_received;
     while ((bytes_received = recv(client_sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
         buffer[bytes_received] = '\0';
         printf("Received data from client: %s\n", buffer);
-    }*/
+    }
 
     // 소켓 닫기
     close(client_sock);

@@ -7,17 +7,51 @@
 #include <pthread.h>
 
 #define SERVER_PORT 12345
+#define MAXBUF 4096
 
 // 새로운 클라이언트를 처리하기 위한 스레드 함수를 정의합니다.
 void *handle_client(void *client_sock) {
     int sock = *(int *)client_sock;
-    char buffer[1024];
+    int http_sock;
+    char buffer[MAXBUF];
     ssize_t bytes_received;
+    struct sockaddr_in server;
+
+    http_sock = socket(AF_INET , SOCK_STREAM , 0);
+    if (http_sock == -1)
+    {
+        printf("Could not create http socket");
+	return NULL;
+    }
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_family = AF_INET;
+    server.sin_port = htons( 80 );
+    //Connect to remote server
+    if (connect(http_sock , (struct sockaddr *)&server , sizeof(server)) < 0)
+    {
+        perror("connect failed. Error");
+        return NULL;
+    }
 
     // 클라이언트로부터 데이터 수신
-    while ((bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
+    while ((bytes_received = recv(sock, buffer, MAXBUF, 0)) > 0) {
         buffer[bytes_received] = '\0';
         printf("Received data from client: %s\n", buffer);
+        if(send(http_sock, buffer, bytes_received, 0) < 0)
+        {
+            fprintf(stderr, "Send failed");
+        }
+	break;
+    }
+
+    while ((bytes_received = read(http_sock, buffer, MAXBUF)) > 0) {
+        buffer[bytes_received] = '\0';
+        printf("Received data from http: %s\n", buffer);
+	if(send(sock, buffer, bytes_received, 0) < 0)
+        {
+		fprintf(stderr, "Send failed");
+        }
+	break;
     }
 
     // 소켓 닫기
