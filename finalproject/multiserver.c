@@ -9,6 +9,23 @@
 
 #define SERVER_PORT 12345
 #define MAXBUF 4096
+#define usage() fprintf(stderr, "Usage: %s {-l, -r}\n", argv[0]);
+
+typedef enum
+{
+	LOCAL_MODE,
+	REMOTE_MODE,
+} algo_t;
+
+int fd_array[64];
+int fd_count = 0;
+
+void save_fd(int fd) {
+	fd_array[fd_count] = fd;
+	fd_count++;
+	return;
+}
+
 
 // 새로운 클라이언트를 처리하기 위한 스레드 함수를 정의합니다.
 void *handle_client(void *client_sock) {
@@ -64,16 +81,33 @@ void *handle_client(void *client_sock) {
 
 
 void sigint_handler(int sig_num) {
-    // 시그널이 발생했을 때 수행할 동작
-    printf("\nCaught the SIGINT signal. Exiting now...\n");
-    exit(0);
+	printf("\nProgram terminated.\n");
+	exit(0);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 	int sockfd, *new_sock;
 	struct sockaddr_in server_addr, client_addr;
 	socklen_t client_addr_len;
+	algo_t mode;
 
+	if (argc != 2) {
+		usage();
+		return EXIT_FAILURE;
+	}
+
+	if (strcmp(argv[1], "-l") == 0) {
+		mode = LOCAL_MODE;
+	}
+	else if (strcmp(argv[1], "-r") == 0) {
+		mode = REMOTE_MODE;
+	}
+	else {
+		usage();
+		return EXIT_FAILURE;
+	}
+
+	//signal handle
 	if (signal(SIGINT, sigint_handler) == SIG_ERR) {
 		printf("Unable to set SIGINT handler. Exiting now...\n");
 		return 1;
@@ -83,6 +117,8 @@ int main() {
 	if (sockfd == -1) {
 		perror("Error creating socket");
 		exit(EXIT_FAILURE);
+	}
+	else {
 	}
 
 	// 서버 주소 설정
@@ -114,8 +150,8 @@ int main() {
 
 		printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-		pthread_t sniffer_thread;
-		if (pthread_create(&sniffer_thread, NULL, handle_client, (void *)new_sock) < 0) {
+		pthread_t client_thread;
+		if (pthread_create(&client_thread, NULL, handle_client, (void *)new_sock) < 0) {
 			perror("Error creating thread");
 			return EXIT_FAILURE;
 		}
