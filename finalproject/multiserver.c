@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -11,110 +12,122 @@
 
 // 새로운 클라이언트를 처리하기 위한 스레드 함수를 정의합니다.
 void *handle_client(void *client_sock) {
-    int sock = *(int *)client_sock;
-    int http_sock;
-    char buffer[MAXBUF];
-    ssize_t bytes_received;
-    struct sockaddr_in server;
+	int sock = *(int *)client_sock;
+	int http_sock;
+	char buffer[MAXBUF];
+	ssize_t bytes_received;
+	struct sockaddr_in server;
 
-    http_sock = socket(AF_INET , SOCK_STREAM , 0);
-    if (http_sock == -1)
-    {
-        printf("Could not create http socket");
+	http_sock = socket(AF_INET , SOCK_STREAM , 0);
+	if (http_sock == -1)
+	{
+		printf("Could not create http socket");
+		return NULL;
+	}
+	server.sin_addr.s_addr = inet_addr("127.0.0.1");
+	server.sin_family = AF_INET;
+	server.sin_port = htons( 80 );
+	//Connect to remote server
+	if (connect(http_sock , (struct sockaddr *)&server , sizeof(server)) < 0)
+	{
+		perror("connect failed. Error");
+		return NULL;
+	}
+
+	// 클라이언트로부터 데이터 수신
+	while ((bytes_received = recv(sock, buffer, MAXBUF, 0)) > 0) {
+		buffer[bytes_received] = '\0';
+		printf("Received data from client: %s\n", buffer);
+		if(send(http_sock, buffer, bytes_received, 0) < 0)
+		{
+			fprintf(stderr, "Send failed");
+		}
+		break;
+	}
+
+	while ((bytes_received = read(http_sock, buffer, MAXBUF)) > 0) {
+		buffer[bytes_received] = '\0';
+		printf("Received data from http: %s\n", buffer);
+		if(send(sock, buffer, bytes_received, 0) < 0)
+		{
+			fprintf(stderr, "Send failed");
+		}
+		break;
+	}
+
+	// 소켓 닫기
+	close(sock);
+	free(client_sock);
+
 	return NULL;
-    }
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");
-    server.sin_family = AF_INET;
-    server.sin_port = htons( 80 );
-    //Connect to remote server
-    if (connect(http_sock , (struct sockaddr *)&server , sizeof(server)) < 0)
-    {
-        perror("connect failed. Error");
-        return NULL;
-    }
+}
 
-    // 클라이언트로부터 데이터 수신
-    while ((bytes_received = recv(sock, buffer, MAXBUF, 0)) > 0) {
-        buffer[bytes_received] = '\0';
-        printf("Received data from client: %s\n", buffer);
-        if(send(http_sock, buffer, bytes_received, 0) < 0)
-        {
-            fprintf(stderr, "Send failed");
-        }
-	break;
-    }
 
-    while ((bytes_received = read(http_sock, buffer, MAXBUF)) > 0) {
-        buffer[bytes_received] = '\0';
-        printf("Received data from http: %s\n", buffer);
-	if(send(sock, buffer, bytes_received, 0) < 0)
-        {
-		fprintf(stderr, "Send failed");
-        }
-	break;
-    }
-
-    // 소켓 닫기
-    close(sock);
-    free(client_sock);
-
-    return NULL;
+void sigint_handler(int sig_num) {
+    // 시그널이 발생했을 때 수행할 동작
+    printf("\nCaught the SIGINT signal. Exiting now...\n");
+    exit(0);
 }
 
 int main() {
-    int sockfd, *new_sock;
-    struct sockaddr_in server_addr, client_addr;
-    socklen_t client_addr_len;
-    
-    // 소켓 생성
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        perror("Error creating socket");
-        exit(EXIT_FAILURE);
-    }
+	int sockfd, *new_sock;
+	struct sockaddr_in server_addr, client_addr;
+	socklen_t client_addr_len;
 
-    // 서버 주소 설정
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(SERVER_PORT);
+	if (signal(SIGINT, sigint_handler) == SIG_ERR) {
+		printf("Unable to set SIGINT handler. Exiting now...\n");
+		return 1;
+	}
+	// 소켓 생성
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd == -1) {
+		perror("Error creating socket");
+		exit(EXIT_FAILURE);
+	}
 
-    // 소켓에 바인딩
-    if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        perror("Error binding socket");
-        exit(EXIT_FAILURE);
-    }
+	// 서버 주소 설정
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = INADDR_ANY;
+	server_addr.sin_port = htons(SERVER_PORT);
 
-    // 클라이언트 연결 대기
-    if (listen(sockfd, 5) == -1) {
-        perror("Error listening for connections");
-        exit(EXIT_FAILURE);
-    }
+	// 소켓에 바인딩
+	if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+		perror("Error binding socket");
+		exit(EXIT_FAILURE);
+	}
 
-    printf("Server listening on port %d\n", SERVER_PORT);
+	// 클라이언트 연결 대기
+	if (listen(sockfd, 5) == -1) {
+		perror("Error listening for connections");
+		exit(EXIT_FAILURE);
+	}
 
-    // 클라이언트 연결 수락
-    client_addr_len = sizeof(client_addr);
-    while ((new_sock = malloc(sizeof(int)), *new_sock = accept(sockfd, (struct sockaddr *)&client_addr, &client_addr_len))) {
-        if (*new_sock == -1) {
-            perror("Error accepting connection");
-            continue;
-        }
+	printf("Server listening on port %d\n", SERVER_PORT);
 
-        printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+	// 클라이언트 연결 수락
+	client_addr_len = sizeof(client_addr);
+	while ((new_sock = malloc(sizeof(int)), *new_sock = accept(sockfd, (struct sockaddr *)&client_addr, &client_addr_len))) {
+		if (*new_sock == -1) {
+			perror("Error accepting connection");
+			continue;
+		}
 
-        pthread_t sniffer_thread;
-        if (pthread_create(&sniffer_thread, NULL, handle_client, (void *)new_sock) < 0) {
-            perror("Error creating thread");
-            return EXIT_FAILURE;
-        }
-    }
+		printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-    if (*new_sock < 0) {
-        perror("Error accepting connection");
-        return EXIT_FAILURE;
-    }
+		pthread_t sniffer_thread;
+		if (pthread_create(&sniffer_thread, NULL, handle_client, (void *)new_sock) < 0) {
+			perror("Error creating thread");
+			return EXIT_FAILURE;
+		}
+	}
 
-    close(sockfd);
+	if (*new_sock < 0) {
+		perror("Error accepting connection");
+		return EXIT_FAILURE;
+	}
 
-    return 0;
+
+	close(sockfd);
+
+	return 0;
 }
