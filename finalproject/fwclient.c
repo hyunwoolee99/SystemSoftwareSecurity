@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define SERVER_IP "192.168.214.24"
+#define SERVER_IP "192.168.111.24"
 #define CLIENT_PORT 8080
 #define SERVER_PORT 12345
 #define MAXBUF 4096
@@ -67,7 +67,7 @@ int main() {
 
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (http_sock == -1) {
+    if (sockfd == -1) {
         perror("Error creating socket");
         exit(EXIT_FAILURE);
     }
@@ -95,9 +95,9 @@ int main() {
     http_addr_len = sizeof(http_addr);
     http_sock = accept(sockfd, (struct sockaddr *)&http_addr, &http_addr_len);
     if(http_sock == -1) {
-            perror("Error accepting connection");
-            exit(EXIT_FAILURE);
-        }
+        perror("Error accepting connection");
+        exit(EXIT_FAILURE);
+    }
 
     printf("Client connected: %s:%d\n", inet_ntoa(http_addr.sin_addr), ntohs(http_addr.sin_port));
 
@@ -128,5 +128,3 @@ int main() {
     close(http_sock);
     return 0;
 }
-
-

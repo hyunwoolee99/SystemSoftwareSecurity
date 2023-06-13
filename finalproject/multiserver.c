@@ -3,6 +3,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
@@ -128,7 +129,7 @@ int main(int argc, char *argv[]) {
 		printf("Unable to set SIGINT handler. Exiting now...\n");
 		return 1;
 	}
-	
+
 	// 소켓 생성
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1) {
