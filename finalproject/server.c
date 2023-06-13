@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 #define SERVER_PORT 12345
+#define CLIENT_PORT 8080
 #define MAXBUF 4096
 #define MAX_COMMAND_LEN 256
 #define usage() fprintf(stderr, "Usage: %s {-l, -r}\n", argv[0]);
@@ -115,7 +116,7 @@ int remote_init(int *sockfd, struct sockaddr_in *server_addr, char *client_ip) {
 
     // 서버 주소 설정
     server_addr->sin_family = AF_INET;
-    server_addr->sin_port = htons(SERVER_PORT);
+    server_addr->sin_port = htons(CLIENT_PORT);
     if (inet_pton(AF_INET, client_ip, &(server_addr->sin_addr)) <= 0) {
         perror("Invalid server IP address");
         close_fd(*sockfd);
@@ -194,8 +195,7 @@ void *handle_client(void *args) {
 	char buffer[MAXBUF];
 	ssize_t bytes_received;
 
-	// 클라이언트로부터 데이터 수신
-    while(true) {
+    while(1) {
 	    while ((bytes_received = recv(sock, buffer, MAXBUF, 0)) > 0) {
 		    buffer[bytes_received] = '\0';
     		printf("Received data from client: %s\n", buffer);
@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
 
     if (mode == LOCAL_MODE) {
         local_init(&sockfd, &server_addr);
-        while(true){
+        while(1){
             new_sock = malloc(sizeof(int));
             if (new_sock == NULL) {
                 perror("Memory allocation failed");
@@ -282,13 +282,13 @@ int main(int argc, char *argv[]) {
     }
     else if (mode == REMOTE_MODE) {
         char command[MAX_COMMAND_LEN] = { '\0' };
-        while (true) {
+        while (1) {
 		    __print_prompt();
 
 		    if (!fgets(command, sizeof(command), stdin)) break;
 
 		    if (!strcmp(command, "q\n") || !strcmp(command, "exit\n")) {
-                fprintf(stderr, "Exit program..");
+                fprintf(stderr, "Exit program..\n");
                 break;
             }
             else {
