@@ -3,6 +3,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
@@ -157,17 +158,14 @@ int connect_http() {
 
 void sigint_handler(int sig_num) {
     close_all_fd();
-	fprintf(stderr, "\nProgram terminated.\n");
+	fprintf(stderr, "\nProgram Terminated.\n");
 	exit(0);
 }
-
-static const char *__color_start = "^[[0;31;40m";
-static const char *__color_end = "^[[0m";
 
 static void __print_prompt(void)
 {
 	char *prompt = "Insert IP address:";
-	fprintf(stderr, "%s%s%s ", __color_start, prompt, __color_end);
+	fprintf(stderr, "%s ", prompt);
 }
 
 void printBanner() {
@@ -289,7 +287,10 @@ int main(int argc, char *argv[]) {
 
 		    if (!fgets(command, sizeof(command), stdin)) break;
 
-		    if (!strcmp(command, "q\n") || !strcmp(command, "exit\n")) break;
+		    if (!strcmp(command, "q\n") || !strcmp(command, "exit\n")) {
+                fprintf(stderr, "Exit program..");
+                break;
+            }
             else {
                 char *pos;
                 if ((pos = strchr(command, '\n')) != NULL) *pos = '\0';
