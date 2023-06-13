@@ -43,7 +43,7 @@ int main() {
 
     // 소켓 생성
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
+    if (server_sock == -1) {
         perror("Error creating socket");
         exit(EXIT_FAILURE);
     }

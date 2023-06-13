@@ -26,6 +26,22 @@ void save_fd(int fd) {
 	return;
 }
 
+void close_fd(int fd) {
+    for(int i = 0; i < fd_count; i++) {
+        if(fd_array[i] == fd) {
+            close(fd);
+            fd_array[i] = fd_array[--fd_count];
+            return;
+        }
+    }
+}
+
+void close_all_fd() {
+	for(int i = 0; i < fd_count; i++) {
+		close(fd_array[i]);
+	}
+	return;
+}
 
 // 새로운 클라이언트를 처리하기 위한 스레드 함수를 정의합니다.
 void *handle_client(void *client_sock) {
@@ -112,6 +128,7 @@ int main(int argc, char *argv[]) {
 		printf("Unable to set SIGINT handler. Exiting now...\n");
 		return 1;
 	}
+	
 	// 소켓 생성
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1) {
