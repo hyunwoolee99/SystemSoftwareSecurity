@@ -170,6 +170,24 @@ static void __print_prompt(void)
 	fprintf(stderr, "%s%s%s ", __color_start, prompt, __color_end);
 }
 
+void printBanner() {
+	int fd;
+	char buf[MAXBUF];
+	ssize_t bytes;
+	fd = open("banner.txt", O_RDONLY);
+	if(fd < 0) {
+		fprintf(stderr, "banner open failed.\n");
+		return;
+	}
+	while((bytes = read(fd, buf, MAXBUF)) > 0) {
+		buf[bytes] = '\0';
+		write(1, buf, bytes);
+		break;
+	}
+	close(fd);
+	return;
+}
+
 // 새로운 클라이언트를 처리하기 위한 스레드 함수를 정의합니다.
 void *handle_client(void *args) {
     thread_args_t *sockets = (thread_args_t *)args;
@@ -227,7 +245,7 @@ void port_forward(int *client_sock) {
 int main(int argc, char *argv[]) {
     int sockfd, *new_sock;
 	struct sockaddr_in server_addr, client_addr;
-
+    printBanner();
     if (argc != 2) {
 		usage();
 		return EXIT_FAILURE;
