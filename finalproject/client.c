@@ -137,13 +137,9 @@ void port_forward(int *sockfd) {
     int server_sock = *sockfd;
     int http_sock;
     char buffer[MAXBUF];
-    char plaintext[MAXBUF];
 	ssize_t bytes_received;
-    unsigned char shared_key[128];
 
     http_sock = connect_http();
-
-    shared_key = DH_key_exchange(*server_sock);
 
     while(1) {
         while((bytes_received = read(http_sock, buffer, MAXBUF)) > 0) {
