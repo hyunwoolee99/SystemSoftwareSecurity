@@ -14,6 +14,8 @@
 #define MAX_COMMAND_LEN 256
 #define usage() fprintf(stderr, "Usage: %s {-l, -r}\n", argv[0]);
 
+pthread_mutex_t fd_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 //local port forwarding을 할 지 remote port forwarding을 할 지 argv[1]를 통해 결정
 typedef enum
 {
@@ -35,19 +37,23 @@ int fd_count = 0;
 
 //fd_array에 열려있는 (socket) file descriptor 번호를 저장
 void save_fd(int fd) {
+    pthread_mutex_lock(&fd_mutex);
 	fd_array[fd_count] = fd;
 	fd_count++;
+    pthread_mutex_unlock(&fd_mutex);
 	return;
 }
 
 //fd_array에서 해당하는 (socket) file descriptor를 close, 이후 array에서 삭제
 void close_fd(int fd) {
+    pthread_mutex_lock(&fd_mutex);
     for(int i = 0; i < fd_count; i++) {
         if(fd_array[i] == fd) {
             close(fd);
             fd_array[i] = fd_array[--fd_count];
             return;
         }
+    pthread_mutex_unlock(&fd_mutex);
     }
 }
 
@@ -56,6 +62,28 @@ void close_all_fd() {
 		close(fd_array[i]);
 	}
 	return;
+}
+
+void append_history(struct sockaddr_in *address) {
+    int fd = open("connection_history.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd == -1) {
+        perror("Unable to open file");
+        return;
+    }
+    //fd에 ip 주소와 포트번호를 "xxx.xxx.xxx.xxx:x" 형태로 저장
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(address->sin_addr), ip, INET_ADDRSTRLEN);
+    int port = ntohs(address->sin_port);
+
+    char buffer[INET_ADDRSTRLEN + 10];
+    snprintf(buffer, sizeof(buffer), "%s:%d\n", ip, port);
+
+    // Write to the file
+    if (write(fd, buffer, strlen(buffer)) == -1) {
+        perror("Error writing to file");
+    }
+
+    close(fd);
 }
 
 void local_init(int *sockfd, struct sockaddr_in *server_addr) {
@@ -100,10 +128,12 @@ int local_accept(int *sockfd, int *new_sock, struct sockaddr_in *client_addr) {
         return EXIT_FAILURE;
     }
     printf("Client connected: %s:%d\n", inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port));
+    append_history(client_addr);
+
     return EXIT_SUCCESS;
 }
 
-int remote_init(int *sockfd, struct sockaddr_in *server_addr, char *client_ip) {
+int remote_init(int *sockfd, struct sockaddr_in *client_addr, char *client_ip) {
     // 소켓 생성
     *sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (*sockfd == -1) {
@@ -115,22 +145,23 @@ int remote_init(int *sockfd, struct sockaddr_in *server_addr, char *client_ip) {
     }
 
     // 서버 주소 설정
-    server_addr->sin_family = AF_INET;
-    server_addr->sin_port = htons(CLIENT_PORT);
-    if (inet_pton(AF_INET, client_ip, &(server_addr->sin_addr)) <= 0) {
+    client_addr->sin_family = AF_INET;
+    client_addr->sin_port = htons(CLIENT_PORT);
+    if (inet_pton(AF_INET, client_ip, &(client_addr->sin_addr)) <= 0) {
         perror("Invalid server IP address");
         close_fd(*sockfd);
         return EXIT_FAILURE;
     }
 
     // 서버에 연결
-    if(connect(*sockfd, (struct sockaddr *)server_addr, sizeof(*server_addr)) == -1) {
+    if(connect(*sockfd, (struct sockaddr *)client_addr, sizeof(*client_addr)) == -1) {
         perror("Error connecting to server");
         close_fd(*sockfd);
         return EXIT_FAILURE;
     }
 
     printf("connected\n");
+    append_history(client_addr);
 }
 
 int connect_http() {
