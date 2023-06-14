@@ -13,7 +13,6 @@
 #define MAXBUF 4096
 #define MAX_COMMAND_LEN 256
 #define usage() fprintf(stderr, "Usage: %s {-l, -r}\n", argv[0]);
-#define BANNER_FILE "serverbanner.txt"
 
 pthread_mutex_t fd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -71,7 +70,6 @@ void append_history(struct sockaddr_in *address) {
         perror("Unable to open file");
         return;
     }
-    //fd에 ip 주소와 포트번호를 "xxx.xxx.xxx.xxx:x" 형태로 저장
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(address->sin_addr), ip, INET_ADDRSTRLEN);
     int port = ntohs(address->sin_port);
@@ -219,7 +217,7 @@ void printBanner() {
 	return;
 }
 
-// 새로운 클라이언트를 처리하기 위한 스레드 함수를 정의합니다.
+// 새로운 클라이언트를 처리하기 위한 thread func
 void *handle_client(void *args) {
     thread_args_t *sockets = (thread_args_t *)args;
 	int sock = sockets->client_sock;
