@@ -7,10 +7,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
-#include <openssl/bn.h>
-#include <openssl/dh.h>
-#include <openssl/aes.h>
-#include <openssl/rand.h>
 
 #define SERVER_PORT 12345
 #define CLIENT_PORT 8080
@@ -66,63 +62,6 @@ void close_all_fd() {
 		close(fd_array[i]);
 	}
 	return;
-}
-
-void encrypt(const unsigned char *plaintext, int plaintext_len, const unsigned char *key, unsigned char *ciphertext) {
-    AES_KEY aes_key;
-    AES_set_encrypt_key(key, 128, &aes_key);
-    AES_encrypt(plaintext, ciphertext, &aes_key);
-}
-
-void decrypt(const unsigned char *ciphertext, int ciphertext_len, const unsigned char *key, unsigned char *plaintext) {
-    AES_KEY aes_key;
-    AES_set_decrypt_key(key, 128, &aes_key);
-    AES_decrypt(ciphertext, plaintext, &aes_key);
-}
-
-unsigned char *DH_key_exchange(int *sock) {
-    DH *dh_params = DH_new();
-    DH_generate_parameters_ex(dh_params, 2048, DH_GENERATOR_5, NULL);
-    DH *server_dh = DHparams_dup(dh_params);
-    if (DH_generate_key(server_dh) != 1) {
-        perror("DH error");
-            exit(EXIT_FAILURE);
-    }
-
-    int pub_key_size = BN_num_bytes(server_dh->pub_key);
-    unsigned char *pub_key_serialized = malloc(pub_key_size);
-    BN_bn2bin(server_dh->pub_key, pub_key_serialized);
-
-    if (send(*sock, &pub_key_size, sizeof(pub_key_size), 0) == -1 ||
-        send(*sock, pub_key_serialized, pub_key_size, 0) == -1) {
-            perror("DH error");
-            exit(EXIT_FAILURE);
-    }
-
-    if (recv(*sock, &pub_key_size, sizeof(pub_key_size), 0) == -1) {
-        perror("DH error");
-            exit(EXIT_FAILURE);
-    }
-    unsigned char *client_pub_key_serialized = malloc(pub_key_size);
-    if (recv(*sock, client_pub_key_serialized, pub_key_size, 0) == -1) {
-        perror("DH error");
-            exit(EXIT_FAILURE);
-    }
-
-    BIGNUM *client_pub_key = BN_new();
-    BN_bin2bn(client_pub_key_serialized, pub_key_size, client_pub_key);
-
-    unsigned char *shared_key = malloc(DH_size(server_dh));
-    DH_compute_key(shared_key, client_pub_key, server_dh);
-
-    // Don't forget to free the allocated memory
-    free(pub_key_serialized);
-    free(client_pub_key_serialized);
-    BN_free(client_pub_key);
-    DH_free(server_dh);
-    DH_free(dh_params);
-
-    return shared_key;
 }
 
 void append_history(struct sockaddr_in *address) {
@@ -285,27 +224,21 @@ void *handle_client(void *args) {
 	int sock = sockets->client_sock;
     int http = sockets->http_sock;
 	char buffer[MAXBUF];
-    char plaintext[MAXBUF];
 	ssize_t bytes_received;
-    unsigned char shared_key[128];
-    
-    shared_key = DH_key_exchange(*sock);
 
     while(1) {
 	    while ((bytes_received = recv(sock, buffer, MAXBUF, 0)) > 0) {
 		    buffer[bytes_received] = '\0';
     		printf("Received data from client: %s\n", buffer);
-            decrypt(buffer, bytes_received, shared_key, plaintext);
-	    	if(send(http, plaintext, bytes_received, 0) < 0)
+	    	if(send(http, buffer, bytes_received, 0) < 0)
     		{
     			fprintf(stderr, "Send failed");
     		}
     	}
 
-	    while ((bytes_received = read(http, plaintext, MAXBUF)) > 0) {
-	    	plaintext[bytes_received] = '\0';
-	    	printf("Received data from http: %s\n", plaintext);
-            encrypt(plaintext, bytes_received, shared_key, buffer);
+	    while ((bytes_received = read(http, buffer, MAXBUF)) > 0) {
+	    	buffer[bytes_received] = '\0';
+	    	printf("Received data from http: %s\n", buffer);
 	    	if(send(sock, buffer, bytes_received, 0) < 0)
 	    	{
 	    		fprintf(stderr, "Send failed");

@@ -6,10 +6,6 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <openssl/bn.h>
-#include <openssl/dh.h>
-#include <openssl/aes.h>
-#include <openssl/rand.h>
 
 #define CLIENT_PORT 8080
 #define SERVER_PORT 12345
@@ -30,60 +26,6 @@ int fd[2];
 void close_all_fd() {
     if(fd[0] != 0) close(fd[0]);
     if(fd[1] != 0) close(fd[1]);
-}
-
-void encrypt(const unsigned char *plaintext, int plaintext_len, const unsigned char *key, unsigned char *ciphertext) {
-    AES_KEY aes_key;
-    AES_set_encrypt_key(key, 128, &aes_key);
-    AES_encrypt(plaintext, ciphertext, &aes_key);
-}
-
-void decrypt(const unsigned char *ciphertext, int ciphertext_len, const unsigned char *key, unsigned char *plaintext) {
-    AES_KEY aes_key;
-    AES_set_decrypt_key(key, 128, &aes_key);
-    AES_decrypt(ciphertext, plaintext, &aes_key);
-}
-
-unsigned char *DH_key_exchange(int *sock) {
-    DH *dh_params = DH_new();
-    DH_generate_parameters_ex(dh_params, 2048, DH_GENERATOR_5, NULL);
-    DH *client_dh = DHparams_dup(dh_params);
-    if (DH_generate_key(client_dh) != 1) {
-        // Handle error
-    }
-
-    int pub_key_size;
-    if (recv(*sock, &pub_key_size, sizeof(pub_key_size), 0) == -1) {
-        // Handle error
-    }
-    unsigned char *server_pub_key_serialized = malloc(pub_key_size);
-    if (recv(*sock, server_pub_key_serialized, pub_key_size, 0) == -1) {
-        // Handle error
-    }
-
-    BIGNUM *server_pub_key = BN_new();
-    BN_bin2bn(server_pub_key_serialized, pub_key_size, server_pub_key);
-
-    pub_key_size = BN_num_bytes(client_dh->pub_key);
-    unsigned char *pub_key_serialized = malloc(pub_key_size);
-    BN_bn2bin(client_dh->pub_key, pub_key_serialized);
-
-    if (send(*sock, &pub_key_size, sizeof(pub_key_size), 0) == -1 ||
-        send(*sock, pub_key_serialized, pub_key_size, 0) == -1) {
-        // Handle error
-    }
-
-    unsigned char *shared_key = malloc(DH_size(client_dh));
-    DH_compute_key(shared_key, server_pub_key, client_dh);
-
-    // Don't forget to free the allocated memory
-    free(server_pub_key_serialized);
-    free(pub_key_serialized);
-    BN_free(server_pub_key);
-    DH_free(client_dh);
-    DH_free(dh_params);
-
-    return shared_key;
 }
 
 int local_init(int *sockfd, char *server_ip) {
@@ -204,10 +146,9 @@ void port_forward(int *sockfd) {
     shared_key = DH_key_exchange(*server_sock);
 
     while(1) {
-        while((bytes_received = read(http_sock, plaintext, MAXBUF)) > 0) {
-            plaintext[bytes_received] = '\0';
-            printf("Received data from client: %s\n", plaintext);
-            encrypt(plaintext, bytes_received, shared_key, buffer);
+        while((bytes_received = read(http_sock, buffer, MAXBUF)) > 0) {
+            buffer[bytes_received] = '\0';
+            printf("Received data from client: %s\n", buffer);
             if(send(server_sock, buffer, bytes_received, 0) < 0)
 	        {
     		    fprintf(stderr, "Send to server failed\n");
@@ -218,8 +159,7 @@ void port_forward(int *sockfd) {
         while((bytes_received = recv(server_sock, buffer, MAXBUF, 0)) > 0) {
             buffer[bytes_received] = '\0';
             printf("Received data from server: %s\n", buffer);
-            decrypt(buffer, bytes_received, shared_key, plaintext);
-            if(send(http_sock, plaintext, bytes_received, 0) < 0)
+            if(send(http_sock, buffer, bytes_received, 0) < 0)
             {
                 fprintf(stderr, "Send failed\n");
             }
