@@ -13,6 +13,7 @@
 #define MAXBUF 4096
 #define MAX_COMMAND_LEN 256
 #define usage() fprintf(stderr, "Usage: %s {-l, -r}\n", argv[0]);
+#define BANNER_FILE "serverbanner.txt"
 
 pthread_mutex_t fd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -204,7 +205,7 @@ void printBanner() {
 	int fd;
 	char buf[MAXBUF];
 	ssize_t bytes;
-	fd = open("banner.txt", O_RDONLY);
+	fd = open(BANNER_FILE, O_RDONLY);
 	if(fd < 0) {
 		fprintf(stderr, "banner open failed.\n");
 		return;
